@@ -1,0 +1,41 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+	http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+	http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+ 
+	<bean id="httpClientConnectionManager" class="org.apache.http.impl.conn.PoolingHttpClientConnectionManager" destroy-method="shutdown">
+		<!-- 设置最大连接数 -->
+		<property name="maxTotal" value="${http.maxTotal}"/>
+		<!-- 设置每个主机地址的并发数 -->
+		<property name="defaultMaxPerRoute" value="${http.defaultMaxPerRoute}"/>
+	</bean>
+	
+	<bean id="httpClientBuilder" class="org.apache.http.impl.client.HttpClientBuilder">
+		<property name="connectionManager" ref="httpClientConnectionManager"/>
+	</bean>
+	
+	<!-- 
+		 通过httpClientBuilder得到httpClient对象，并且要设置httpClient为多利模式
+	 -->
+	<bean id="httpClient" class="org.apache.http.impl.client.CloseableHttpClient" factory-bean="httpClientBuilder" factory-method="build" scope="prototype"/>
+	
+	<!-- 构造请求参数 -->
+	<bean id="requestConfigBuilder" class="org.apache.http.client.config.RequestConfig.Builder">
+		<property name="connectTimeout" value="${http.connectTimeout}"/>
+		<property name="connectionRequestTimeout" value="${http.connectionRequestTimeout}"/>
+		<property name="socketTimeout" value="${http.socketTimeout}"/>
+		<property name="staleConnectionCheckEnabled" value="${http.staleConnectionCheckEnabled}"/>
+	</bean>
+	
+	<bean id="requestConfig" class="org.apache.http.client.config.RequestConfig" factory-bean="requestConfigBuilder" factory-method="build"/>
+	
+	<!-- 清理无效连接 -->
+	<bean class="com.ailaji.manage.utils.IdleConnectionEvictor" destroy-method="shutdown">
+		<constructor-arg index="0" ref="httpClientConnectionManager"/>
+	</bean>
+
+</beans>

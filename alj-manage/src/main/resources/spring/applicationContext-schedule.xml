@@ -1,0 +1,114 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+	http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+	http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+	
+	<!-- 定义触发时间 -->
+	<bean id="testQuartzPersist" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail">
+			<bean class="org.springframework.scheduling.quartz.JobDetailFactoryBean">  
+	            <!-- 指定任务Bean的实现类 -->  
+	            <property name="jobClass"  value="com.ailaji.manage.task.TestTimesPrintTask"/> 
+	            <property name="name" value="TestTimesPrintTask" /> 
+	            <property name="durability" value="true"/>
+	        </bean> 
+		</property>
+		<!-- cron表达式 -->
+		<property name="cronExpression">
+			<!-- 每5min执行一次 -->
+			<value>0 0/5 * * * ?</value>
+		</property>
+	</bean>
+	
+	<!-- quartz持久化存储  -->  
+	<bean id="scheduler" lazy-init="false" autowire="no" 
+	       class="org.springframework.scheduling.quartz.SchedulerFactoryBean" >    
+	      <property name="dataSource">    
+	           <ref bean="dataSource" />    
+	       </property>  
+	      <!-- 在SchedulerFactoryBean初始化完成后，延迟300秒启动Scheduler，以便让Spring能够更快初始化容器中剩余的Bean。 -->
+		<property name="startupDelay" value="10" />
+		<property name="applicationContextSchedulerContextKey" value="applicationContextKey" />
+		<property name="quartzProperties">
+			<props>
+				<prop key="org.quartz.scheduler.instanceName">erpQuartzScheduler</prop>
+				<prop key="org.quartz.scheduler.instanceId">AUTO</prop>
+				<prop key="org.quartz.threadPool.class">org.quartz.simpl.SimpleThreadPool</prop>
+				<prop key="org.quartz.threadPool.threadCount">3</prop>
+				<prop key="org.quartz.threadPool.threadPriority">5</prop>
+				<prop key="org.quartz.jobStore.misfireThreshold">60000</prop>
+				<prop key="org.quartz.jobStore.class">org.quartz.impl.jdbcjobstore.JobStoreTX</prop>
+				<prop key="org.quartz.jobStore.driverDelegateClass">org.quartz.impl.jdbcjobstore.StdJDBCDelegate</prop>
+				<prop key="org.quartz.jobStore.selectWithLockSQL">SELECT * FROM {0}LOCKS WHERE LOCK_NAME = ? FOR UPDATE</prop>
+				<prop key="org.quartz.jobStore.tablePrefix">QRTZ_</prop>
+				<prop key="org.quartz.jobStore.isClustered">true</prop>
+				<prop key="org.quartz.jobStore.clusterCheckinInterval">20000</prop>
+			</props>
+		</property>
+		<property name="triggers">
+			<list>
+				<ref bean="testQuartzPersist" />
+			</list>
+		</property>  
+	       <property name="overwriteExistingJobs" value="true"/>    
+	</bean> 
+
+	
+
+</beans>
+
+	<!-- 1）Cron表达式的格式：秒 分 时 日 月 周 年(可选)。
+		
+		               字段名                 允许的值                                                                允许的特殊字符  
+		
+		               秒                         0-59                               , - * /  
+		
+		               分                         0-59                               , - * /  
+		
+		               小时                   0-23                               , - * /  
+		
+		               日                         1-31                               , - * ? / L W C  
+		
+		               月                         1-12 or JAN-DEC                     , - * /  
+		
+		               周几                     1-7 or SUN-SAT                    , - * ? / L C #  
+		
+		               年 (可选字段)     empty, 1970-2099                 , - * /
+
+               “?”字符：表示不确定的值
+
+               “,”字符：指定数个值
+
+               “-”字符：指定一个值的范围
+
+               “/”字符：指定一个值的增加幅度。n/m表示从n开始，每次增加m
+
+               “L”字符：用在日表示一个月中的最后一天，用在周表示该月最后一个星期X
+
+               “W”字符：指定离给定日期最近的工作日(周一到周五)
+
+               “#”字符：表示该月第几个周X。6#3表示该月第3个周五
+
+         2）Cron表达式范例：
+		
+		                 每隔5秒执行一次：*/5 * * * * ?
+		
+		                 每隔1分钟执行一次：0 */1 * * * ?
+		
+		                 每天23点执行一次：0 0 23 * * ?
+		
+		                 每天凌晨1点执行一次：0 0 1 * * ?
+		
+		                 每月1号凌晨1点执行一次：0 0 1 1 * ?
+		
+		                 每月最后一天23点执行一次：0 0 23 L * ?
+		
+		                 每周星期天凌晨1点实行一次：0 0 1 ? * L
+		
+		                 在26分、29分、33分执行一次：0 26,29,33 * * * ?
+		
+		                 每天的0点、13点、18点、21点都执行一次：0 0 0,13,18,21 * * ? -->

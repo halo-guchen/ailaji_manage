@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:rabbit="http://www.springframework.org/schema/rabbit" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+        http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.1.xsd">
+        
+        
+        <!-- main business data queue connection factory -->
+	<bean id="rabbitConnectionFactory" class="org.springframework.amqp.rabbit.connection.CachingConnectionFactory">
+		<constructor-arg ref="rcf" />
+		<property name="username" value="${queue.username}" />
+		<property name="password" value="${queue.password}" />
+	</bean>
+
+	<bean id="rcf" class="com.rabbitmq.client.ConnectionFactory">
+		<property name="host" value="${queue.host}" />
+		<property name="requestedHeartbeat" value="20" />
+	</bean>
+	
+	<!-- 定义rabbit admin -->
+	<bean id="rabbitAdmin" class="org.springframework.amqp.rabbit.core.RabbitAdmin" init-method="initialize">
+		<constructor-arg ref="rabbitConnectionFactory" />
+	</bean>
+	
+	
+	<!-- template start -->
+	<bean id="testRabbitMQTemplate" class="org.springframework.amqp.rabbit.core.RabbitTemplate">
+	    <constructor-arg ref="rabbitConnectionFactory"></constructor-arg>
+		<property name="queue" value="test_rabbit_queue"></property>
+		<property name="routingKey" value="test_rabbit_queue" />
+		<property name="messageConverter" ref="jsonMessageConverter" />
+	</bean>
+	<!-- template end -->
+	
+	<!-- sender  start -->
+	<bean id="TestSender" class="com.ailaji.manage.msg.sender.impl.RabbitMQMessageSenderImpl">
+	     <property name="rabbitTemplate" ref="testRabbitMQTemplate" />
+	</bean>
+	<!-- sender  end -->
+	
+	
+	<!-- receiver start-->
+	<bean id="testRabbitMessageHandler" class="com.ailaji.manage.msg.receiver.impl.RabbitMQMessageAckHandlerImpl"
+		init-method="start" destroy-method="shutdown">
+		<constructor-arg index="0" name="queueName" value="test_rabbit_queue_other" />
+		<constructor-arg index="1" name="connectionFactory"
+			ref="rabbitConnectionFactory" />
+		<constructor-arg index="2" name="messageProcessor"
+			ref="testRabbitMessageProcessor" />
+		<constructor-arg index="3" name="messageConverter"
+			ref="jsonMessageConverter" />
+		<property name="concurrentConsumers" value="3" />
+	</bean>
+	<!-- receiver end-->
+	
+	
+	<!-- process start-->
+	<bean id="testRabbitMessageProcessor" class="com.ailaji.manage.msg.processor.impl.TestRabbitMessageProcessorImpl"></bean>
+	<!-- process end-->
+	
+	
+	<!-- queue start -->
+	<bean id="test_rabbit_queue" class="org.springframework.amqp.core.Queue">
+	    <constructor-arg name="name" value="test_rabbit_queue"/>
+	    <constructor-arg name="exclusive" value="false"/>
+	    <constructor-arg name="autoDelete" value="false"/>
+	    <constructor-arg name="durable" value="true"/>
+	    <constructor-arg name="arguments" ref="queueArgs"/>
+	</bean>
+	
+	<bean id="test_rabbit_queue_other" class="org.springframework.amqp.core.Queue">
+	    <constructor-arg name="name" value="test_rabbit_queue_other"/>
+	    <constructor-arg name="exclusive" value="false"/>
+	    <constructor-arg name="autoDelete" value="false"/>
+	    <constructor-arg name="durable" value="true"/>
+	    <constructor-arg name="arguments" ref="queueArgs1"/>
+	</bean>
+	<!-- queue end -->
+	
+	
+	
+	<!-- queue args -->
+	
+	<bean id="xHaPolicy" class="java.lang.String">
+		<constructor-arg value="all"/>
+	</bean>
+	<bean id="xMessageTtl" class="java.lang.Integer">
+		<constructor-arg value="60000"/>
+	</bean>
+	<bean id="queueArgs" class="java.util.HashMap">
+		<constructor-arg>
+			<map key-type="java.lang.String" value-type="java.lang.String">
+				<entry key="x-ha-policy" value="all"></entry>
+				<entry key="x-dead-letter-exchange" value="exchange_one"></entry>
+				<entry key="x-message-ttl" value-ref="xMessageTtl"></entry>
+				<entry key="x-dead-letter-routing-key" value="foo.orange"></entry>
+			</map>
+		</constructor-arg>
+	</bean>
+	
+	<bean id="queueArgs1" class="java.util.HashMap">
+		<constructor-arg>
+			<map key-type="java.lang.String" value-type="java.lang.String">
+				<entry key="x-ha-policy" value="all"></entry>
+			</map>
+		</constructor-arg>
+	</bean>
+	
+	<rabbit:topic-exchange name="exchange_one">
+		<rabbit:bindings>
+			<rabbit:binding pattern="foo.*" queue="test_rabbit_queue" ></rabbit:binding>
+			<rabbit:binding pattern="foo.*" queue="test_rabbit_queue_other" ></rabbit:binding>
+		</rabbit:bindings>
+	</rabbit:topic-exchange>
+	
+	
+	<!-- convert start-->
+	<bean id="senderMessageConverter"
+		class="org.springframework.amqp.support.converter.SimpleMessageConverter">
+	</bean>
+	<bean id="jsonMessageConverter"
+		class="org.springframework.amqp.support.converter.JsonMessageConverter">
+	</bean>
+	<!-- convert end -->
+	
+        
+</beans>

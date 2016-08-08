@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<!-- 注解驱动 -->
+	<mvc:annotation-driven>
+		<!-- 自定义message converter 
+			自定义后，原有的默认配置，将失效
+		-->
+		<!-- 定义文本转化器 -->
+		<mvc:message-converters>
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+				<constructor-arg index="0" value="UTF-8"/>
+			</bean>
+			<!-- 支持了jsonp的转化 -->
+			<!-- <bean class="com.wechat.manage.spring.exetend.converter.json.CallbackMappingJackson2HttpMessageConverter">
+				<property name="callbackName" value="callback"/>
+			</bean> -->
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+	<!-- 配置模型对象的扫描包 -->
+	<context:component-scan base-package="com.ailaji.manage.controller" />
+	
+    <mvc:resources mapping="/images/**" location="/images/" />
+    <mvc:resources mapping="/js/**" location="/js/" />
+    <mvc:resources mapping="/css/**" location="/css/" />
+    <mvc:resources mapping="/fonts/**" location="/fonts/" />
+	
+	<!-- 定义视图解析器(内部资源视图解析器) Example: prefix="/WEB-INF/jsp/", suffix=".jsp", 
+		viewname="test" -> "/WEB-INF/jsp/test.jsp" -->
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/views/" />
+		<property name="suffix" value=".jsp" />
+		<property name="order" value="1" />
+	</bean>
+	
+	<!-- 定义文件上传解析器 -->
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<!-- 设定默认编码 -->
+		<property name="defaultEncoding" value="UTF-8"></property>
+		<!-- 设定文件上传的最大值5MB，120*1024*1024 -->
+		<property name="maxUploadSize" value="125829120"></property>
+	</bean>
+	
+	<mvc:interceptors>
+	 	<!-- 监测用户是否登录 -->
+		<mvc:interceptor>
+			<mvc:mapping path="/page/**"/>
+			<bean class="com.ailaji.manage.filter.PageFilter"></bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+	
+	<!-- aop配置 -->
+	<bean class="com.ailaji.manage.restful.api.BaseApi" id="baseApi"/>
+	
+	<aop:aspectj-autoproxy />
+	<aop:config >
+	    <aop:aspect id="logParamAspect" ref="baseApi">
+		      <aop:pointcut id="apiPointCut" expression="@annotation(org.springframework.web.bind.annotation.RequestMapping)"/>
+		      <aop:before method="logParam" pointcut-ref="apiPointCut"/>
+	    </aop:aspect>
+    </aop:config>
+  
+    
+
+</beans>
